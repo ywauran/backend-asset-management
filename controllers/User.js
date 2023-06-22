@@ -1,6 +1,5 @@
 import argon2 from "argon2";
 import path from "path";
-import fs from "fs";
 import { Op } from "sequelize";
 import User from "../models/UserModel.js";
 
@@ -103,4 +102,52 @@ export const createUser = async (req, res) => {
       res.status(400).json({ msg: error.message });
     }
   });
+};
+
+export const updateUser = async (req, res) => {
+  const user = await User.findOne({
+    where: {
+      uuid: req.params.id,
+    },
+  });
+  if (!user) return res.status(404).json({ msg: "Pengguna tidak ditemukan" });
+  const { name, email, phoneNumber, nidn } = req.body;
+  try {
+    await User.update(
+      {
+        name: name,
+        email: email,
+        phoneNumber: phoneNumber,
+        nidn: nidn,
+      },
+      {
+        where: {
+          id: user.id,
+        },
+      }
+    );
+    res.status(200).json({ msg: "Pengguna berhasil diperbarui" });
+  } catch (error) {
+    res.status(400).json({ msg: error.message });
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  const user = await User.findOne({
+    where: {
+      uuid: req.params.id,
+    },
+  });
+
+  if (!user) return res.status(404).json({ msg: "Pengguna tidak ditemukan" });
+  try {
+    await User.destroy({
+      where: {
+        id: user.id,
+      },
+    });
+    res.status(200).json({ msg: "Pengguna berhasil dihapus" });
+  } catch (error) {
+    res.status(400).json({ msg: error.message });
+  }
 };
