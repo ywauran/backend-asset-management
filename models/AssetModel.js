@@ -1,5 +1,6 @@
 import { Sequelize } from "sequelize";
 import db from "../config/Database.js";
+import CategoryModel from "./CategoryModel.js";
 
 const { DataTypes } = Sequelize;
 
@@ -12,6 +13,13 @@ const Asset = db.define("Asset", {
       notEmpty: true,
     },
   },
+  serial_number: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
+  },
   item_name: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -19,8 +27,8 @@ const Asset = db.define("Asset", {
       notEmpty: true,
     },
   },
-  quantity: {
-    type: DataTypes.INTEGER,
+  item_condition: {
+    type: DataTypes.STRING,
     allowNull: false,
     validate: {
       notEmpty: true,
@@ -30,4 +38,9 @@ const Asset = db.define("Asset", {
   url: DataTypes.STRING,
 });
 
+CategoryModel.hasMany(Asset);
+
+Asset.belongsTo(CategoryModel, {
+  foreignKey: "categoryId",
+});
 export default Asset;

@@ -13,7 +13,7 @@ export const getAssets = async (req, res) => {
 export const createAsset = async (req, res) => {
   if (req.files === null || req.files === undefined)
     return req.status(400).json({ msg: "Belum ada file yang diupload" });
-  const { item_name, quantity } = req.body;
+  const { item_name, serial_number, item_condition, categoryId } = req.body;
 
   const { file } = req.files;
   const fileSize = file.data.length;
@@ -32,7 +32,9 @@ export const createAsset = async (req, res) => {
     try {
       await Asset.create({
         item_name: item_name,
-        quantity: quantity,
+        serial_number: serial_number,
+        item_condition: item_condition,
+        categoryId: categoryId,
         image: fileName,
         url: url,
       });
