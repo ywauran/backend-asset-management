@@ -2,10 +2,11 @@ import Category from "../models/CategoryModel.js";
 
 export const getCategory = async (req, res) => {
   try {
-    const response = await Category.findAll();
-    res.status(200).json(response);
+    const categories = await Category.findAll();
+    res.status(200).json({ data: categories });
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).json({ error: "Kesalahan server internal" });
   }
 };
 
@@ -13,53 +14,45 @@ export const createCategory = async (req, res) => {
   const { title } = req.body;
 
   try {
-    await Category.create({
-      title: title,
-    });
-    res.status(201).json({ msg: "Berhasil menambah Kategori" });
-  } catch (error) {}
+    await Category.create({ title });
+    res.status(201).json({ message: "Kategori berhasil dibuat" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Kesalahan server internal" });
+  }
 };
 
 export const deleteCategory = async (req, res) => {
-  const category = await Category.findOne({
-    where: {
-      uuid: req.params.id,
-    },
-  });
-
-  if (!category) return res.status(404).json({ msg: "Data tidak ditemukan" });
+  const { id } = req.params;
 
   try {
-    await Category.destroy({
-      where: {
-        id: category.id,
-      },
-    });
-    res.status(200).json({ msg: "Kategori berhasil dihapus" });
-  } catch (error) {}
+    const category = await Category.findOne({ where: { uuid: id } });
+    if (!category) {
+      return res.status(404).json({ error: "Kategori tidak ditemukan" });
+    }
+
+    await Category.destroy({ where: { id: category.id } });
+    res.status(200).json({ message: "Kategori berhasil dihapus" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Kesalahan server internal" });
+  }
 };
 
-export const updatedCategory = async (req, res) => {
-  const category = await Category.findOne({
-    where: {
-      uuid: req.params.id,
-    },
-  });
+export const updateCategory = async (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
 
-  if (!category) return res.status(404).json({ msg: "Data tidak ditemukan" });
   try {
-    await Category.update(
-      {
-        title: title,
-      },
-      {
-        where: {
-          id: category.id,
-        },
-      }
-    );
-    res.status(200).json({ msg: "Data berhasil diperbarui" });
+    const category = await Category.findOne({ where: { uuid: id } });
+    if (!category) {
+      return res.status(404).json({ error: "Kategori tidak ditemukan" });
+    }
+
+    await Category.update({ title }, { where: { id: category.id } });
+    res.status(200).json({ message: "Kategori berhasil diperbarui" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).json({ error: "Kesalahan server internal" });
   }
 };

@@ -7,7 +7,8 @@ import FileUpoad from "express-fileupload";
 import UserRoute from "./routes/UserRoute.js";
 import AuthRoute from "./routes/AuthRoute.js";
 import AssetRoute from "./routes/AssetRoute.js";
-import CategoryRoute from "./routes/CategoryRoute.js";
+// import CategoryRoute from "./routes/CategoryRoute.js";
+import LoanRoute from "./routes/LoanRoute.js";
 import db from "./config/Database.js";
 
 dotenv.config();
@@ -47,7 +48,8 @@ app.use(express.static("public"));
 app.use(UserRoute);
 app.use(AuthRoute);
 app.use(AssetRoute);
-app.use(CategoryRoute);
+app.use(LoanRoute);
+// app.use(CategoryRoute);
 
 sessionStore.sync();
 

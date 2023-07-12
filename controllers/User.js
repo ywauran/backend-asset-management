@@ -8,50 +8,59 @@ export const getUsers = async (req, res) => {
   const limit = parseInt(req.query.limit) || 3;
   const search = req.query.search_query || "";
   const offset = limit * page;
-  const totalRows = await User.count({
-    where: {
-      [Op.or]: [
-        {
-          name: {
-            [Op.like]: "%" + search + "%",
-          },
-        },
-        {
-          username: {
-            [Op.like]: "%" + search + "%",
-          },
-        },
-      ],
-    },
-  });
 
-  const totalPage = Math.ceil(totalRows / limit);
-  const result = await User.findAll({
-    where: {
-      [Op.or]: [
-        {
-          name: {
-            [Op.like]: "%" + search + "%",
+  try {
+    const totalRows = await User.count({
+      where: {
+        [Op.or]: [
+          {
+            name: {
+              [Op.like]: "%" + search + "%",
+            },
           },
-        },
-        {
-          username: {
-            [Op.like]: "%" + search + "%",
+          {
+            username: {
+              [Op.like]: "%" + search + "%",
+            },
           },
-        },
-      ],
-    },
-    offset: offset,
-    limit: limit,
-    order: [["id", "DESC"]],
-  });
-  res.json({
-    result: result,
-    page: page,
-    limit: limit,
-    totalRows: totalRows,
-    totalPage: totalPage,
-  });
+        ],
+      },
+    });
+
+    const totalPage = Math.ceil(totalRows / limit);
+
+    const result = await User.findAll({
+      where: {
+        [Op.or]: [
+          {
+            name: {
+              [Op.like]: "%" + search + "%",
+            },
+          },
+          {
+            username: {
+              [Op.like]: "%" + search + "%",
+            },
+          },
+        ],
+        role: "guest",
+      },
+      offset: offset,
+      limit: limit,
+      order: [["id", "DESC"]],
+    });
+
+    res.status(200).json({
+      result: result,
+      page: page,
+      limit: limit,
+      totalRows: totalRows,
+      totalPage: totalPage,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Kesalahan server internal" });
+  }
 };
 
 export const getUserById = async (req, res) => {
@@ -64,15 +73,16 @@ export const getUserById = async (req, res) => {
     });
     res.status(200).json(response);
   } catch (error) {
-    req.status(500).json({ msg: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Kesalahan server internal" });
   }
 };
 
 export const createUser = async (req, res) => {
   if (req.files === null || req.files === undefined)
-    return req.status(400).json({ msg: "Belum ada file yang diupload" });
-  const { name, username, password, role } = req.body;
+    return res.status(400).json({ msg: "Belum ada file yang diupload" });
 
+  const { name, username, password, role } = req.body;
   const { file } = req.files;
   const fileSize = file.data.length;
   const ext = path.extname(file.name);
@@ -81,13 +91,18 @@ export const createUser = async (req, res) => {
   const allowedType = [".png", ".jpg", ".jpeg"];
 
   if (!allowedType.includes(ext.toLowerCase()))
-    return res.status(422).json({ msg: "Invalid Images" });
+    return res.status(422).json({ msg: "Gambar tidak valid" });
   if (fileSize > 5000000)
-    return res.status(422).json({ msg: "mage must be less than 5 MB" });
+    return res.status(422).json({ msg: "Gambar harus kurang dari 5 MB" });
+
   const hashPassword = await argon2.hash(password);
 
   file.mv(`./public/images/${fileName}`, async (err) => {
-    if (err) return res.status(500).json({ msg: err.message });
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Kesalahan server internal" });
+    }
+
     try {
       await User.create({
         name: name,
@@ -97,38 +112,71 @@ export const createUser = async (req, res) => {
         url: url,
         role: role,
       });
-      res.status(201).json({ msg: "Register successfully" });
+      res.status(201).json({ msg: "Registrasi berhasil" });
     } catch (error) {
-      res.status(400).json({ msg: error.message });
+      console.error(error);
+      res.status(400).json({ error: "Permintaan tidak valid" });
     }
   });
 };
 
 export const updateUser = async (req, res) => {
-  const user = await User.findOne({
-    where: {
-      uuid: req.params.id,
-    },
-  });
-  if (!user) return res.status(404).json({ msg: "Pengguna tidak ditemukan" });
-  const { name, email, phoneNumber, nidn } = req.body;
   try {
-    await User.update(
-      {
-        name: name,
-        email: email,
-        phoneNumber: phoneNumber,
-        nidn: nidn,
-      },
-      {
-        where: {
-          id: user.id,
-        },
+    const { name, username, password, role } = req.body;
+    const user = await User.findOne({ where: { uuid: req.params.id } });
+
+    if (!user) {
+      return res.status(404).json({ msg: "Pengguna tidak ditemukan" });
+    }
+
+    if (req.files && req.files.file) {
+      const { file } = req.files;
+      const fileSize = file.data.length;
+      const ext = path.extname(file.name);
+      const fileName = file.md5 + ext;
+      const allowedType = [".png", ".jpg", ".jpeg"];
+
+      if (!allowedType.includes(ext.toLowerCase())) {
+        return res.status(422).json({ msg: "Gambar tidak valid" });
       }
-    );
-    res.status(200).json({ msg: "Pengguna berhasil diperbarui" });
+      if (fileSize > 5000000) {
+        return res.status(422).json({ msg: "Gambar harus kurang dari 5 MB" });
+      }
+
+      file.mv(`./public/images/${fileName}`, async (err) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: "Kesalahan server internal" });
+        }
+
+        const hashPassword = await argon2.hash(password);
+
+        await user.update({
+          name,
+          username,
+          password: hashPassword,
+          image: fileName,
+          url: `${req.protocol}://${req.get("host")}/images/${fileName}`,
+          role,
+        });
+
+        res.status(200).json({ msg: "Data pengguna berhasil diperbarui" });
+      });
+    } else {
+      const hashPassword = await argon2.hash(password);
+
+      await user.update({
+        name,
+        username,
+        password: hashPassword,
+        role,
+      });
+
+      res.status(200).json({ msg: "Data pengguna berhasil diperbarui" });
+    }
   } catch (error) {
-    res.status(400).json({ msg: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Kesalahan server internal" });
   }
 };
 
@@ -139,7 +187,8 @@ export const deleteUser = async (req, res) => {
     },
   });
 
-  if (!user) return res.status(404).json({ msg: "Pengguna tidak ditemukan" });
+  if (!user) return res.status(404).json({ error: "Pengguna tidak ditemukan" });
+
   try {
     await User.destroy({
       where: {
@@ -148,6 +197,7 @@ export const deleteUser = async (req, res) => {
     });
     res.status(200).json({ msg: "Pengguna berhasil dihapus" });
   } catch (error) {
-    res.status(400).json({ msg: error.message });
+    console.error(error);
+    res.status(400).json({ error: "Permintaan tidak valid" });
   }
 };

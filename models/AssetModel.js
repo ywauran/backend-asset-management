@@ -34,13 +34,15 @@ const Asset = db.define("Asset", {
       notEmpty: true,
     },
   },
+  status: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
+  },
   image: DataTypes.STRING,
   url: DataTypes.STRING,
 });
 
-CategoryModel.hasMany(Asset);
-
-Asset.belongsTo(CategoryModel, {
-  foreignKey: "categoryId",
-});
 export default Asset;
